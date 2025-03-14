@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {font-family: Arial, Helvetica, sans-serif;}
+
+/* Form Styling */
+form {
+  border: 3px solid #f1f1f1;
+  padding: 16px;
+  background-color: white;
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+input[type=text], input[type=password], select {
+  width: 100%;
+  padding: 12px 20px;
+  margin: 8px 0;
+  display: inline-block;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #4CAF50; /* Green color for the Register button */
+  color: white;
+  padding: 14px 20px;
+  margin: 8px 0;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+button:hover {
+  opacity: 0.8;
+}
+
+.imgcontainer {
+  text-align: center;
+  margin: 24px 0 12px 0;
+}
+
+img.avatar {
+  width: 40%;
+  border-radius: 50%;
+}
+
+.container {
+  padding: 16px;
+}
+
+span.psw {
+  float: right;
+  padding-top: 16px;
+}
+
+/* Remove background-color from the register button container */
+.container.register-container {
+  padding: 0;
+}
+
+/* Change styles for buttons on extra small screens */
+@media screen and (max-width: 300px) {
+  .button-container {
+     flex-direction: column;
+  }
+  button[type="button"].register {
+     width: 100%;
+  }
+}
+
+.header {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+/* Adjust for the CCS Sit-In Form heading and layout */
+.sit-in-heading {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+form.sit-in-form {
+  width: 25%;
+  margin-left: 37%;
+}
+  </style>
+</head>
+<body>
+
+<!-- Heading at the top -->
+<div class="header">
+  <h2>CCS Sit-In Monitoring System</h2>
+</div>
+
+<!-- Registration Form -->
+<form action="registration.php" method="post">
+  <div class="container">
+    <label for="idno"><b>ID Number</b></label>
+    <input type="text" placeholder="Enter ID Number" name="idno" required>
+
+    <label for="lname"><b>Lastname</b></label>
+    <input type="text" placeholder="Enter Lastname" name="lname" required>
+
+    <label for="fname"><b>Firstname</b></label>
+    <input type="text" placeholder="Enter Firstname" name="fname" required>
+
+    <label for="mname"><b>Middle Name</b></label>
+    <input type="text" placeholder="Enter Middle Name" name="mname" required>
+
+    <label for="course"><b>Course</b></label>
+    <select name="course" required>
+      <option value="" disabled selected>Select Course</option>
+      <option value="BSIT">BSIT</option>
+      <option value="BSCS">BSCS</option>
+      <option value="BSA">BSA</option>
+      <option value="BSBA">BSBA</option>
+      <option value="BSEE">BSEE</option>
+      <option value="BSECE">BSECE</option>
+      <!-- Add more courses as needed -->
+    </select>
+
+    <label for="yearlevel"><b>Year Level</b></label>
+    <select name="yearlevel" required>
+      <option value="" disabled selected>Select Year Level</option>
+      <option value="1">1st Year</option>
+      <option value="2">2nd Year</option>
+      <option value="3">3rd Year</option>
+      <option value="4">4th Year</option>
+      <!-- Add more year levels as needed -->
+    </select>
+
+    <label for="Address"><b>Address</b></label>
+    <input type="text" placeholder="Enter Address" name="address" required>
+
+    <label for="address"><b>Email Address</b></label>
+    <input type="text" placeholder="Enter Address" name="address" required>
+
+    <!-- Username and Password Fields -->
+    <label for="username"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="username" required>
+
+    <label for="password"><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="password" required>
+  </div>
+
+  <!-- Submit Button -->
+  <div class="container register-container">
+    <button type="submit">Register</button>
+  </div>
+</form>
+
+</body>
+</html>
