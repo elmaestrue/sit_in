@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - CCS Sit-In Monitoring</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; }
+    form { 
+      border: 3px solid #f1f1f1; 
+      padding: 16px; 
+      background-color: white; 
+      width: 100%; 
+      max-width: 400px; 
+      box-sizing: border-box; 
+      margin: 0 auto; 
+    }
+    input[type=text], input[type=password] { 
+      width: 100%; 
+      padding: 12px 20px; 
+      margin: 8px 0; 
+      display: inline-block; 
+      border: 1px solid #ccc; 
+      box-sizing: border-box; 
+    }
+    button { 
+      background-color: rgb(0, 183, 255); 
+      color: white; 
+      padding: 14px 20px; 
+      margin: 8px 0; 
+      border: none; 
+      cursor: pointer; 
+      width: 50%; 
+    }
+    button:hover { opacity: 0.8; }
+    .button-container { 
+      display: flex; 
+      justify-content: space-between; 
+    }
+    button[type="button"].register { 
+      background-color: #4CAF50; 
+      width: 48%; 
+    }
+    button[type="button"].register:hover { opacity: 0.8; }
+    .header { 
+      text-align: center; 
+      font-size: 24px; 
+      margin-bottom: 20px; 
+    }
+    .imgcontainer {
+      text-align: center;
+      margin: 24px 0 12px 0;
+    }
+    img.avatar {
+      width: 40%;
+      border-radius: 50%;
+      display: block;
+      margin: 0 auto; /* This centers the image */
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h2>CCS Sit-In Monitoring System</h2>
+</div>
+
+<!-- Login Form -->
+<form action="login.php" method="post">
+  <div class="imgcontainer">
+    <img src="ccs.png" alt="Avatar" class="avatar">
+  </div>
+
+  <div class="container">
+    <label for="uname"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="uname" required>
+
+    <label for="psw"><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="psw" required>
+  </div>
+
+  <!-- Buttons for Login and Register -->
+  <div class="button-container">
+    <button type="submit">Login</button>
+    <button type="button" class="register" onclick="window.location.href='registration.html'">Register</button>
+  </div>
+</form>
+
+</body>
+</html>
