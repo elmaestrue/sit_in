@@ -1,11 +1,10 @@
 <?php
 $servername = "localhost";
-$username = "root"; // Replace with your MySQL username
-$password = ""; // Replace with your MySQL password
-$dbname = "test"; // Replace with your database name
+$username = "root"; // Default XAMPP user
+$password = ""; // Leave empty if no password
+$database = "test"; // Make sure this matches your actual DB name
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
+$conn = new mysqli($servername, $username, $password, $database);
 
 // Check connection
 if ($conn->connect_error) {

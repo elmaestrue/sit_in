@@ -183,59 +183,51 @@ $user_email = $_SESSION['email']; // email example, you can set others as needed
     <!-- Sidebar Overlay -->
     <div class="overlay"></div>
 
-<!-- Sidebar Navigation -->
-<div class="navcontainer">
-    <nav class="nav">
-        <div class="nav-upper-options">
-            <div class="nav-option">
-                <a href="index.php" style="color: white; text-decoration: none;">
-                    <h3 class="nav-text">Home</h3>
-                </a>
+    <!-- Sidebar Navigation -->
+    <div class="navcontainer">
+        <nav class="nav">
+            <div class="nav-upper-options">
+                <div class="nav-option">
+                    <a href="index.php" style="color: white; text-decoration: none;">
+                        <h3>Home</h3>
+                    </a>
+                </div>
+                <div class="nav-option">
+                    <a href="edit.php" style="color: white; text-decoration: none;">
+                        <h3>Profile</h3>
+                    </a>
+                </div>
+                <div class="nav-option">
+                    <a href="edit.php" style="color: white; text-decoration: none;">
+                        <h3>Edit</h3>
+                    </a>
+                </div>
+                <div class="nav-option">
+                    <a href="index.php" style="color: white; text-decoration: none;">
+                        <h3>View Announcement</h3>
+                    </a>
+                </div>
+                <div class="nav-option">
+                    <a href="index.php" style="color: white; text-decoration: none;">
+                        <h3>Sit-in Rules</h3>
+                    </a>
+                </div>
+                <div class="nav-option">
+                    <a href="index.php" style="color: white; text-decoration: none;">
+                        <h3>Lab Rules & Regulations</h3>
+                    </a>
+                </div>
+                <div class="nav-option"><h3>Sit-in History</h3></div>
+                <div class="nav-option"><h3>Reservation</h3></div>
+                <div class="nav-option"><h3>View Remaining Session</h3></div>
+                <div class="nav-option">
+                    <a href="logout.php" style="color: white; text-decoration: none;">
+                        <h3>Log-Out</h3>
+                    </a>
+                </div>
             </div>
-            <div class="nav-option">
-                <a href="edit.php" style="color: white; text-decoration: none;">
-                    <h3 class="nav-text">Profile</h3>
-                </a>
-            </div>
-            <div class="nav-option">
-                <a href="edit.php" style="color: white; text-decoration: none;">
-                    <h3 class="nav-text">Edit</h3>
-                </a>
-            </div>
-            <div class="nav-option">
-                <a href="index.php" style="color: white; text-decoration: none;">
-                    <h3 class="nav-text">View Announcement</h3>
-                </a>
-            </div>
-            <div class="nav-option">
-                <a href="index.php" style="color: white; text-decoration: none;">
-                    <h3 class="nav-text">Sit-in Rules</h3>
-                </a>
-            </div>
-            <div class="nav-option">
-                <a href="index.php" style="color: white; text-decoration: none;">
-                    <h3 class="nav-text">Lab Rules & Regulations</h3>
-                </a>
-            </div>
-            <div class="nav-option"><h3 class="nav-text">Sit-in History</h3></div>
-            <div class="nav-option"><h3 class="nav-text">Reservation</h3></div>
-            <div class="nav-option"><h3 class="nav-text">View Remaining Session</h3></div>
-            <div class="nav-option">
-                <a href="logout.php" style="color: white; text-decoration: none;">
-                    <h3 class="nav-text">Log-Out</h3>
-                </a>
-            </div>
-        </div>
-    </nav>
-</div>
-
-<!-- CSS -->
-<style>
-    .nav-text {
-        font-size: 14px; /* Adjust the size as needed */
-    }
-</style>
-
+        </nav>
+    </div>
 
     <!-- Main Content Section -->
     <div class="container mt-5 main-content">
@@ -331,30 +323,6 @@ $user_email = $_SESSION['email']; // email example, you can set others as needed
             overlay.classList.remove("show");
         });
     </script>
-
-<script>
-    function fetchAnnouncements() {
-        fetch('fetch_announcements.php')
-            .then(response => response.json())
-            .then(data => {
-                let announcementsHTML = "";
-                data.forEach(ann => {
-                    announcementsHTML += `
-                        <div class="mb-3">
-                            <strong>CCS Admin | ${new Date(ann.date_posted).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })}</strong>
-                            <p>${ann.message}</p>
-                        </div>`;
-                });
-                document.getElementById("announcement-section").innerHTML = announcementsHTML;
-            })
-            .catch(error => console.error('Error fetching announcements:', error));
-    }
-
-    // Fetch announcements every 5 seconds
-    setInterval(fetchAnnouncements, 5000);
-    fetchAnnouncements();
-</script>
-
 </body>
 
 </html>
