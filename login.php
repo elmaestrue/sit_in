@@ -1,70 +1,55 @@
 <?php
-// Start the session
 session_start();
-$_SESSION['user_id'] = $user_id; // Where $user_id is the ID of the logged-in user
 
-
-// Check if form is submitted via POST method
+// Check if form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Check if 'uname' and 'psw' are set in the POST data
-    if (isset($_POST['uname']) && isset($_POST['psw'])) {
-        // Database connection details
-        $servername = "localhost";
-        $db_username = "root";
-        $db_password = "";
-        $dbname = "test"; // Change to your actual database name
-
-        // Create a connection to the database
-        $conn = new mysqli($servername, $db_username, $db_password, $dbname);
-
-        // Check the connection
+    if (isset($_POST['uname'], $_POST['psw'])) {
+        $conn = new mysqli("localhost", "root", "", "test");
         if ($conn->connect_error) {
             die("Connection failed: " . $conn->connect_error);
         }
 
-        // Retrieve data from login form
         $username = $_POST['uname'];
         $password = $_POST['psw'];
 
-        // Prepare SQL statement to check the username
-        $sql = "SELECT * FROM studentinfo WHERE username = ?";
-        $stmt = $conn->prepare($sql);
-
-        if ($stmt === false) {
-            // SQL preparation failed
-            die("Error preparing statement: " . $conn->error);
-        }
-
+        $stmt = $conn->prepare("SELECT * FROM studentinfo WHERE username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
 
-        if ($result->num_rows > 0) {
-            // User found, now verify the password
-            $user = $result->fetch_assoc();
+        if ($user = $result->fetch_assoc()) {
             if (password_verify($password, $user['password'])) {
-                // Password matches, set session variable and redirect to index
+                if ($user['remaining_sessions'] <= 0) {
+                    $_SESSION['error'] = "You have no remaining sessions. Please contact the administrator.";
+                    header("Location: login.html");
+                    exit();
+                }
+
                 $_SESSION['username'] = $user['username'];
+                $_SESSION['user_id'] = $user['student_id'];
                 header("Location: index.php");
                 exit();
             } else {
-                // Password does not match
-                echo "Incorrect password!";
+                $_SESSION['error'] = "Incorrect password!";
+                header("Location: login.html");
+                exit();
             }
         } else {
-            // Username not found
-            echo "Username not found!";
+            $_SESSION['error'] = "Username not found!";
+            header("Location: login.html");
+            exit();
         }
 
-        // Close the connection
         $stmt->close();
         $conn->close();
     } else {
-        // If 'uname' or 'psw' is not set, display a message
-        echo "Please enter both username and password!";
+        $_SESSION['error'] = "Please enter both username and password!";
+        header("Location: login.html");
+        exit();
     }
 } else {
-    // Not a POST request, display an error message
-    echo "Invalid request!";
+    $_SESSION['error'] = "Invalid request!";
+    header("Location: login.html");
+    exit();
 }
 ?>

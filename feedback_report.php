@@ -12,49 +12,67 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Fetch Sit-in Records
-$records_query = "SELECT id, student_id, name, language, laboratory, sit_in_time, log_out_time FROM sit_in_records ORDER BY sit_in_time DESC";
-$records_result = $conn->query($records_query);
-$sit_in_records = [];
-while ($row = $records_result->fetch_assoc()) {
-    $sit_in_records[] = $row;
+// Fetch feedback records (latest first)
+$query = "
+    SELECT 
+        f.student_id,
+        s.name AS fullname,
+        s.course,
+        f.laboratory,
+        f.date,
+        f.message,
+        sr.time_in,
+        sr.time_out
+    FROM feedback f
+    LEFT JOIN students s ON f.student_id = s.student_id
+    LEFT JOIN sit_in_records sr ON f.student_id = sr.student_id AND DATE(f.date) = DATE(sr.date)
+    ORDER BY f.date DESC
+";
+$result = $conn->query($query);
+$feedbacks = [];
+while ($row = $result->fetch_assoc()) {
+    $feedbacks[] = $row;
 }
-
-// Fetch Data for Charts
-$language_query = "SELECT language, COUNT(*) as count FROM sit_in_records GROUP BY language";
-$language_result = $conn->query($language_query);
-$language_data = [];
-while ($row = $language_result->fetch_assoc()) {
-    $language_data[] = $row;
-}
-
-$laboratory_query = "SELECT laboratory, COUNT(*) as count FROM sit_in_records GROUP BY laboratory";
-$laboratory_result = $conn->query($laboratory_query);
-$laboratory_data = [];
-while ($row = $laboratory_result->fetch_assoc()) {
-    $laboratory_data[] = $row;
-}
-
 $conn->close();
+
+// Foul word detection
+$foul_words = ['stupid', 'idiot', 'dumb', 'fool', 'ugly', 'nonsense', 
+                'bogo', 'yawa', 'atay', 'piste', 'kayat', 'boang', 'animal', 'tae']; // Add more as needed
+function containsFoulWords($message, $foul_words) {
+    foreach ($foul_words as $word) {
+        if (stripos($message, $word) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+$foul_found = false;
+foreach ($feedbacks as $fb) {
+    if (containsFoulWords($fb['message'], $foul_words)) {
+        $foul_found = true;
+        break;
+    }
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CCS | Sit-in Records</title>
+    <title>CCS | Feedback Report</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
     <style>
         body {
             background-color: #f8f9fa;
         }
-        canvas {
-            display: block;
-            margin: 0 auto;
+        .table td, .table th {
+            vertical-align: middle;
+            text-align: center;
         }
     </style>
 </head>
@@ -73,9 +91,9 @@ $conn->close();
                 <li class="nav-item"><a class="nav-link text-white" href="#" data-bs-toggle="modal" data-bs-target="#searchModal">Search</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="students.php">Students</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="sit_in.php">Sit-in</a></li>
-                <li class="nav-item"><a class="nav-link text-white active" href="ViewRecords.php">View Sit-in Records</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="ViewRecords.php">View Sit-in Records</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="report.php">Sit-in Reports</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="feedback_report.php">Feedback Reports</a></li>
+                <li class="nav-item"><a class="nav-link text-white active" href="feedback_report.php">Feedback Reports</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="#">Reservation</a></li>
             </ul>
         </div>
@@ -83,64 +101,76 @@ $conn->close();
     </div>
 </nav>
 
-<!-- Main Container -->
+<!-- Container -->
 <div class="container mt-4">
-    <h2 class="text-center">Current Sit-in Records</h2>
+    <h2 class="text-center mb-4">Feedback Report</h2>
 
-    <!-- Charts -->
-    <div class="row mb-4 justify-content-center">
-        <div class="col-md-6">
-            <div class="card border-primary">
-                <div class="card-header bg-primary text-white">📊 Sit-in by Language</div>
-                <div class="card-body text-center">
-                    <canvas id="languageChart" width="300" height="300"></canvas>
-                </div>
-            </div>
+    <?php if ($foul_found): ?>
+        <div class="alert alert-danger text-center fw-bold">
+            ⚠️ Some feedbacks contain foul language. Please review them.
         </div>
-        <div class="col-md-6">
-            <div class="card border-primary">
-                <div class="card-header bg-primary text-white">🏢 Sit-in by Laboratory</div>
-                <div class="card-body text-center">
-                    <canvas id="labChart" width="300" height="300"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
+    <?php endif; ?>
 
-    <!-- Sit-in Records Table -->
-    <div>
-        <table id="recordsTable" class="table table-striped table-bordered">
+    <button class="btn btn-secondary mb-3" onclick="window.print()">🖨️ Print</button>
+
+    <div class="table-responsive">
+        <table id="feedbackTable" class="table table-striped table-bordered">
             <thead class="table-primary">
                 <tr>
-                    <th>Sit-in #</th>
-                    <th>ID Number</th>
+                    <th>Student ID Number</th>
                     <th>Name</th>
-                    <th>Purpose</th>
-                    <th>Lab</th>
-                    <th>Login</th>
-                    <th>Logout</th>
-                    <th>Date</th>
+                    <th>Course</th>
+                    <th>Laboratory</th>
+                    <th>Date & Time Submitted</th>
+                    <th>Message</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($sit_in_records as $record): ?>
-                <tr>
-                    <td><?= $record['id'] ?></td>
-                    <td><?= $record['student_id'] ?></td>
-                    <td><?= $record['name'] ?></td>
-                    <td><?= $record['language'] ?></td>
-                    <td><?= $record['laboratory'] ?></td>
-                    <td><?= $record['sit_in_time'] ?></td>
-                    <td><?= $record['log_out_time'] ?></td>
-                    <td><?= date('Y-m-d', strtotime($record['sit_in_time'])) ?></td>
-                </tr>
+                <?php foreach ($feedbacks as $feedback): ?>
+                    <?php $isFlagged = containsFoulWords($feedback['message'], $foul_words); ?>
+                    <tr class="<?= $isFlagged ? 'table-danger' : '' ?>">
+                        <td><?= htmlspecialchars($feedback['student_id']) ?></td>
+                        <td><?= htmlspecialchars($feedback['fullname']) ?></td>
+                        <td><?= htmlspecialchars($feedback['course']) ?></td>
+                        <td><?= htmlspecialchars($feedback['laboratory']) ?></td>
+                        <td>
+                            <?php
+                                $datetime = $feedback['date'];
+                                if (!empty($datetime) && $datetime !== '0000-00-00 00:00:00' && strtotime($datetime)) {
+                                    echo htmlspecialchars(date('M j, Y g:i A', strtotime($datetime)));
+                                } else {
+                                    echo 'N/A';
+                                }
+                            ?>
+                        </td>
+                        <td>
+                            <?= htmlspecialchars($feedback['message']) ?>
+                            <?php if ($isFlagged): ?>
+                                <span class="badge bg-danger ms-2">⚠️ Foul Language Detected</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php
+                                $time_in = $feedback['time_in'];
+                                echo !empty($time_in) ? htmlspecialchars(date('M j, Y g:i A', strtotime($time_in))) : 'N/A';
+                            ?>
+                        </td>
+                        <td>
+                            <?php
+                                $time_out = $feedback['time_out'];
+                                echo !empty($time_out) ? htmlspecialchars(date('M j, Y g:i A', strtotime($time_out))) : 'N/A';
+                            ?>
+                        </td>
+                    </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- Search Student Modal -->
+<!-- Search Modal -->
 <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-md">
         <div class="modal-content border-primary">
@@ -157,40 +187,15 @@ $conn->close();
     </div>
 </div>
 
-<!-- Sit In Modal -->
-<div class="modal fade" id="sitInModal" tabindex="-1">
-  <div class="modal-dialog modal-md">
-    <form action="sit_in_action.php" method="post" class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Sit In Form</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="text" class="form-control mb-2" id="sit_student_id" name="student_id" readonly>
-        <input type="text" class="form-control mb-2" id="sit_name" name="student_name" readonly>
-        <input type="text" class="form-control mb-2" id="sit_purpose" name="purpose" placeholder="Purpose" required>
-        <input type="text" class="form-control mb-2" id="sit_lab" name="lab" placeholder="Lab" required>
-        <input type="text" class="form-control mb-2" id="sit_remaining" name="remaining_sessions" readonly>
-      </div>
-      <div class="modal-footer">
-        <button type="submit" class="btn btn-primary">Sit In</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
 $(document).ready(function () {
-    $('#recordsTable').DataTable({
-        order: [[7, 'desc']] // Sort by Date column (index 7) descending
-    });
+    $('#feedbackTable').DataTable();
 
     $('#searchButton').on('click', function () {
         const query = $('#searchInput').val().trim();
@@ -233,37 +238,8 @@ $(document).ready(function () {
                 resultDiv.html(`<p class="text-danger">Error: ${err.message}</p>`);
             });
     });
-
-    const languageData = <?= json_encode($language_data); ?>;
-    const languageLabels = languageData.map(item => item.language);
-    const languageCounts = languageData.map(item => item.count);
-
-    new Chart(document.getElementById('languageChart'), {
-        type: 'pie',
-        data: {
-            labels: languageLabels,
-            datasets: [{
-                data: languageCounts,
-                backgroundColor: ['#36A2EB', '#FF6384', '#FF9F40', '#4CAF50', '#8E44AD']
-            }]
-        }
-    });
-
-    const labData = <?= json_encode($laboratory_data); ?>;
-    const labLabels = labData.map(item => item.laboratory);
-    const labCounts = labData.map(item => item.count);
-
-    new Chart(document.getElementById('labChart'), {
-        type: 'pie',
-        data: {
-            labels: labLabels,
-            datasets: [{
-                data: labCounts,
-                backgroundColor: ['#FF6384', '#36A2EB', '#FF9F40', '#4CAF50', '#8E44AD']
-            }]
-        }
-    });
 });
 </script>
+
 </body>
 </html>

@@ -1,73 +1,93 @@
 <?php
-// Start the session
 session_start();
+include("db.php");
 
-// Check if the user is logged in
 if (!isset($_SESSION['username'])) {
-    // Redirect to the login page if not logged in
     header("Location: login.html");
     exit();
 }
 
-// Assuming user details like name, email, etc., are stored in the session
-$user_name = $_SESSION['username']; // example of username from session
-$user_email = $_SESSION['email']; // email example, you can set others as needed
+$username = $_SESSION['username'];
+
+// Step 1: Get student info from studentinfo table
+$user_stmt = $conn->prepare("SELECT * FROM studentinfo WHERE username = ?");
+$user_stmt->bind_param("s", $username);
+$user_stmt->execute();
+$user_result = $user_stmt->get_result();
+$user = $user_result->fetch_assoc();
+
+if (!$user) {
+    die("User not found in studentinfo.");
+}
+
+$student_id = $user['student_id'] ?? null;
+
+if (!$student_id) {
+    die("Student ID not found in studentinfo.");
+}
+
+// Step 2: Get remaining_sessions from students table
+$student_stmt = $conn->prepare("SELECT remaining_sessions FROM students WHERE student_id = ?");
+$student_stmt->bind_param("s", $student_id);
+$student_stmt->execute();
+$student_result = $student_stmt->get_result();
+$student = $student_result->fetch_assoc();
+$remaining_sessions = $student ? $student['remaining_sessions'] : 'N/A';
+
+// Step 3: Get announcements
+$announcements = mysqli_query($conn, "SELECT * FROM announcements ORDER BY posted_at DESC LIMIT 5");
+
+// Step 4: Get session logs
+$logs_stmt = $conn->prepare("SELECT * FROM sit_in_records WHERE student_id = ? ORDER BY sit_in_time DESC LIMIT 10");
+$logs_stmt->bind_param("s", $student_id);
+$logs_stmt->execute();
+$logs_result = $logs_stmt->get_result();
+
+// Step 5: Get feedbacks (using submitted_at)
+$feedback_stmt = $conn->prepare("SELECT * FROM feedback WHERE student_id = ? ORDER BY submitted_at DESC LIMIT 5");
+$feedback_stmt->bind_param("s", $student_id);
+$feedback_stmt->execute();
+$feedback_result = $feedback_stmt->get_result();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Student Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Basic Styling */
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f8f9fa;
+            background-color: #f4f6f9;
+            font-family: Arial, sans-serif;
         }
-
-        /* Header */
         header {
+            background-color: #0D47A1;
+            color: white;
+            padding: 10px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
-            background-color: #0D47A1;
-            color: white;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            left: 0;
-            z-index: 1000;
         }
-
-        .logosec {
-            display: flex;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        .icn.menuicn {
+        .menuicn {
             width: 30px;
             cursor: pointer;
+            margin-right: 10px;
         }
-
-        .header-dashboard h2 {
-            font-size: 24px;
-            margin: 0;
+        .sidebar {
+            background-color: #0D47A1;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
         }
-
-        /* Sidebar Navigation */
+        .sidebar img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
         .navcontainer {
             width: 250px;
             position: fixed;
@@ -79,16 +99,9 @@ $user_email = $_SESSION['email']; // email example, you can set others as needed
             z-index: 1100;
             padding-top: 20px;
         }
-
         .navcontainer.open {
             left: 0;
         }
-
-        .nav {
-            display: flex;
-            flex-direction: column;
-        }
-
         .nav-option {
             padding: 15px;
             color: white;
@@ -97,13 +110,10 @@ $user_email = $_SESSION['email']; // email example, you can set others as needed
             text-align: center;
             transition: background-color 0.3s ease, transform 0.3s ease;
         }
-
         .nav-option:hover {
             background-color: #34495e;
             transform: translateX(10px);
         }
-
-        /* Sidebar Overlay */
         .overlay {
             position: fixed;
             top: 0;
@@ -114,71 +124,27 @@ $user_email = $_SESSION['email']; // email example, you can set others as needed
             display: none;
             z-index: 1050;
         }
-
         .overlay.show {
             display: block;
         }
-
-        /* Main Content */
-        .main-content {
-            padding-top: 70px;
-        }
-
-        /* Sidebar Student Info */
-        .sidebar {
-            background-color: #0D47A1;
-            color: white;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-        }
-
-        .sidebar img {
-            width: 100px;
-            border-radius: 50%;
-            display: block;
-            margin: auto;
-        }
-
-        .card {
-            border-radius: 5px;
-        }
-
-        .card-header {
-            background-color: #0D47A1;
-            color: white;
-            font-weight: bold;
-        }
-
-        .rules-content {
-            max-height: 250px;
-            overflow-y: auto;
+        .announcement {
+            background: #fff;
             padding: 10px;
-            background-color: #ffffff;
-        }
-
-        /* Responsive Design */
-        @media screen and (max-width: 850px) {
-            .navcontainer {
-                width: 100vw;
-                left: -100vw;
-            }
-
-            .navcontainer.open {
-                left: 0;
-            }
+            margin-bottom: 10px;
+            border-left: 4px solid #0D47A1;
         }
     </style>
 </head>
-
 <body>
-    <!-- Header Section -->
-    <header>
-        <div class="logosec">
-            <div class="logo">Dashboard</div>
-            <img src="https://media.geeksforgeeks.org/wp-content/uploads/20221210182541/Untitled-design-(30).png" class="icn menuicn" alt="menu-icon">
-        </div>
-    </header>
+
+<header>
+    <div style="display: flex; align-items: center;">
+        <img src="https://media.geeksforgeeks.org/wp-content/uploads/20221210182541/Untitled-design-(30).png" class="menuicn me-3" alt="menu-icon">
+        <h4 class="m-0">Welcome, <?= htmlspecialchars($user['firstname']) ?>!</h4>
+    </div>
+</header>
+
+<div class="overlay"></div>
 
     <!-- Sidebar Overlay -->
     <div class="overlay"></div>
@@ -217,7 +183,12 @@ $user_email = $_SESSION['email']; // email example, you can set others as needed
                     <h3 class="nav-text">Lab Rules & Regulations</h3>
                 </a>
             </div>
-            <div class="nav-option"><h3 class="nav-text">Sit-in History</h3></div>
+            <div class="nav-option">
+                <a href="history.php" style="color: white; text-decoration: none;">
+                    <h3 class="nav-text">Sit-in History</h3> 
+                </a>
+                
+            </div>
             <div class="nav-option"><h3 class="nav-text">Reservation</h3></div>
             <div class="nav-option"><h3 class="nav-text">View Remaining Session</h3></div>
             <div class="nav-option">
@@ -236,125 +207,83 @@ $user_email = $_SESSION['email']; // email example, you can set others as needed
     }
 </style>
 
-
-    <!-- Main Content Section -->
-    <div class="container mt-5 main-content">
-        <div class="row">
-            <!-- Sidebar (Student Info) -->
-            <div class="col-md-3">
-    <div class="sidebar text-center p-3">
-        <h5 class="mb-3">Student Information</h5>
-        <!-- Displaying the user profile picture -->
-        <img src="<?php echo isset($_SESSION['profile_image']) ? $_SESSION['profile_image'] : 'lob.jpg'; ?>" 
-             alt="Student Profile" class="rounded-circle mb-3" style="width: 100px; height: 100px;">
-        <hr>
-        <p><strong>👤 Name:</strong> <?php echo isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : ''; ?></p>
-        <p><strong>🎓 Course:</strong> <?php echo isset($_SESSION['user_course']) ? htmlspecialchars($_SESSION['user_course']) : ''; ?></p>
-        <p><strong>📅 Year:</strong> <?php echo isset($_SESSION['user_year']) ? htmlspecialchars($_SESSION['user_year']) : ''; ?></p>
-        <p><strong>📧 Email:</strong> <?php echo isset($_SESSION['user_email']) ? htmlspecialchars($_SESSION['user_email']) : ''; ?></p>
-        <p><strong>🏠 Address:</strong> <?php echo isset($_SESSION['user_address']) ? htmlspecialchars($_SESSION['user_address']) : ''; ?></p>
-        <p><strong>⏳ Session:</strong> <?php echo isset($_SESSION['user_session']) ? htmlspecialchars($_SESSION['user_session']) : '30'; ?></p>
-    </div>
-</div>
-
-            <!-- Announcement Section -->
-            <div class="col-md-5">
-                <div class="card">
-                    <div class="card-header">📢 Announcement</div>
-                    <div class="card-body">
-                        <p><strong>CCS Admin | 2025-Feb-03</strong></p>
-                        <p>The College of Computer Studies will open the registration of students for the Sit-in privilege starting tomorrow. Thank you! Lab Supervisor</p>
-                    </div>
-                    <div class="card-body">
-                        <p><strong>CCS Admin | 2024-May-08</strong></p>
-                        <p>Important Announcement We are excited to announce the launch of our new website! 🎉 Explore our latest products and services now!</p>
-                    </div>
-                </div>
+<div class="container-fluid mt-3">
+    <div class="row">
+        <!-- Sidebar: Student Info -->
+        <div class="col-md-3" style="margin-left: 75px;">
+            <div class="sidebar">
+                <h5>Student Info</h5>
+                <img src="<?= htmlspecialchars($user['profile_image'] ?? 'lob.jpg') ?>" alt="Profile Image">
+                <hr style="border-color: white;">
+                <p><strong>Name:</strong><br><?= htmlspecialchars($user['firstname'] . ' ' . $user['lastname']) ?></p>
+                <p><strong>Course:</strong><br><?= htmlspecialchars($user['course']) ?></p>
+                <p><strong>Year:</strong><br><?= htmlspecialchars($user['yearlevel']) ?></p>
+                <p><strong>Email:</strong><br><?= htmlspecialchars($user['email']) ?></p>
+                <p><strong>Address:</strong><br><?= htmlspecialchars($user['address']) ?></p>
+                <p><strong>Remaining Sessions:</strong> <?= htmlspecialchars($remaining_sessions) ?></p>
             </div>
+        </div>
 
+        <!-- Main: Announcements, Logs, Feedback -->
+        <div class="col-md-6">
+            <h4>📢 Announcements</h4>
+            <?php while ($row = mysqli_fetch_assoc($announcements)) { ?>
+                <div class="announcement">
+                    <strong><?= date("M d, Y", strtotime($row['posted_at'])) ?></strong>
+                    <p><?= htmlspecialchars($row['message']) ?></p>
+                </div>
+            <?php } ?>
 
-            <!-- Rules and Regulations -->
-            <div class="col-md-4">
-    <div class="card">
-        <div class="card-header">📜 Rules and Regulation</div>
-        <div class="card-body rules-content">
-            <h6><strong>University of Cebu</strong></h6>
-            <h6><strong>COLLEGE OF INFORMATION & COMPUTER STUDIES</strong></h6>
-            <h6><strong>LABORATORY RULES AND REGULATIONS</strong></h6>
-            
-            <p>To avoid embarrassment and maintain camaraderie with your friends and superiors at our laboratories, please observe the following:</p>
-            <ul>
-                <li><strong>1.</strong> Maintain silence, proper decorum, and discipline inside the laboratory. Mobile phones, walkmans, and other personal equipment must be switched off.</li>
-                <li><strong>2.</strong> Games are not allowed inside the lab. This includes computer-related games, card games, and other games that may disturb the operation of the lab.</li>
-                <li><strong>3.</strong> Surfing the Internet is allowed only with the permission of the instructor. Downloading and installing software are strictly prohibited.</li>
-                <li><strong>4.</strong> Accessing websites not related to the course (especially pornographic and illicit sites) is strictly prohibited.</li>
-                <li><strong>5.</strong> Deleting computer files and changing the computer setup is a major offense.</li>
-                <li><strong>6.</strong> Observe computer time usage carefully. A fifteen-minute allowance is given for each use. Otherwise, the unit will be given to those who wish to "sit-in".</li>
-                <li><strong>7.</strong> Observe proper decorum while inside the laboratory:
-                    <ul>
-                        <li>Do not enter the lab unless the instructor is present.</li>
-                        <li>All bags, knapsacks, and similar items must be deposited at the counter.</li>
-                        <li>Follow the seating arrangement of your instructor.</li>
-                        <li>At the end of class, close all software programs.</li>
-                        <li>Return all chairs to their proper places after using.</li>
-                    </ul>
-                </li>
-                <li><strong>8.</strong> Chewing gum, eating, drinking, smoking, and other forms of vandalism are prohibited inside the lab.</li>
-                <li><strong>9.</strong> Anyone causing a continual disturbance will be asked to leave the lab. Acts or gestures offensive to the members of the community, including public display of physical intimacy, are not tolerated.</li>
-                <li><strong>10.</strong> Persons exhibiting hostile or threatening behavior such as yelling, swearing, or disregarding requests made by lab personnel will be asked to leave the lab.</li>
-                <li><strong>11.</strong> For serious offenses, lab personnel may call the Civil Security Office (CSU) for assistance.</li>
-                <li><strong>12.</strong> Any technical problem or difficulty must be addressed to the laboratory supervisor, student assistant, or instructor immediately.</li>
-            </ul>
             <hr>
-            <h6>Disciplinary Action</h6>
-            <ul>
-                <li><strong>First Offense:</strong> The Head, Dean, or OIC recommends the Guidance Center for a suspension from classes for each offender.</li>
-                <li><strong>Second and Subsequent Offenses:</strong> A recommendation for a heavier sanction will be endorsed to the Guidance Center.</li>
+            <h4>🕒 Session Logs</h4>
+            <ul class="list-group">
+                <?php while ($log = $logs_result->fetch_assoc()) { ?>
+                    <li class="list-group-item">
+                        <strong><?= htmlspecialchars($log['laboratory']) ?>:</strong>
+                        <?= date("M d, Y - h:i A", strtotime($log['sit_in_time'])) ?>
+                        to <?= $log['log_out_time'] ? date("h:i A", strtotime($log['log_out_time'])) : 'N/A' ?>
+                    </li>
+                <?php } ?>
             </ul>
+
+            <hr>
+            <h4>📝 Your Feedback</h4>
+            <ul class="list-group">
+                <?php while ($fb = $feedback_result->fetch_assoc()) { ?>
+                    <li class="list-group-item">
+                        <?= htmlspecialchars($fb['message']) ?><br>
+                        <small class="text-muted"><?= date("M d, Y - h:i A", strtotime($fb['submitted_at'])) ?></small>
+                    </li>
+                <?php } ?>
+            </ul>
+        </div>
+
+        <!-- Optional Column -->
+        <div class="col-md-3">
         </div>
     </div>
 </div>
 
-    <!-- Script to handle sidebar toggle -->
-    <script>
-        let menuIcon = document.querySelector(".menuicn");
-        let sidebar = document.querySelector(".navcontainer");
-        let overlay = document.querySelector(".overlay");
+<!-- Sidebar Toggle -->
+<script>
+    let menuIcon = document.querySelector(".menuicn");
+    let sidebar = document.querySelector(".navcontainer");
+    let overlay = document.querySelector(".overlay");
 
+    if (menuIcon) {
         menuIcon.addEventListener("click", () => {
             sidebar.classList.add("open");
             overlay.classList.add("show");
         });
+    }
 
+    if (overlay) {
         overlay.addEventListener("click", () => {
             sidebar.classList.remove("open");
             overlay.classList.remove("show");
         });
-    </script>
-
-<script>
-    function fetchAnnouncements() {
-        fetch('fetch_announcements.php')
-            .then(response => response.json())
-            .then(data => {
-                let announcementsHTML = "";
-                data.forEach(ann => {
-                    announcementsHTML += `
-                        <div class="mb-3">
-                            <strong>CCS Admin | ${new Date(ann.date_posted).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })}</strong>
-                            <p>${ann.message}</p>
-                        </div>`;
-                });
-                document.getElementById("announcement-section").innerHTML = announcementsHTML;
-            })
-            .catch(error => console.error('Error fetching announcements:', error));
     }
-
-    // Fetch announcements every 5 seconds
-    setInterval(fetchAnnouncements, 5000);
-    fetchAnnouncements();
 </script>
 
 </body>
-
 </html>

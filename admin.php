@@ -10,38 +10,18 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Fetch sit-in statistics
+// Stats
 $stats_query = "SELECT language, COUNT(*) as count FROM sit_in_records GROUP BY language";
 $stats_result = $conn->query($stats_query);
 $stats_data = [];
 while ($row = $stats_result->fetch_assoc()) {
     $stats_data[] = $row;
 }
+$total_students = $conn->query("SELECT COUNT(*) as total FROM students")->fetch_assoc()['total'];
+$total_sit_in = $conn->query("SELECT COUNT(*) as total FROM sit_in_records")->fetch_assoc()['total'];
+$current_sit_in = $conn->query("SELECT COUNT(DISTINCT student_id) as total FROM sit_in_records")->fetch_assoc()['total'];
 
-// Get total students
-$total_students_query = "SELECT COUNT(*) as total FROM students";
-$total_students_result = $conn->query($total_students_query);
-$total_students = $total_students_result->fetch_assoc()['total'];
-
-// Get total sit-in count
-$total_sit_in_query = "SELECT COUNT(*) as total FROM sit_in_records";
-$total_sit_in_result = $conn->query($total_sit_in_query);
-$total_sit_in = $total_sit_in_result->fetch_assoc()['total'];
-
-// Count unique students who have sit-in records
-$current_sit_in_query = "SELECT COUNT(DISTINCT student_id) as total FROM sit_in_records";
-$current_sit_in_result = $conn->query($current_sit_in_query);
-$current_sit_in = $current_sit_in_result->fetch_assoc()['total'];
-
-// Fetch announcements
-$ann_query = "SELECT * FROM announcements ORDER BY date_posted DESC";
-$ann_result = $conn->query($ann_query);
-$announcements = [];
-while ($row = $ann_result->fetch_assoc()) {
-    $announcements[] = $row;
-}
-
-// Handle announcement submission
+// Post announcement
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['announcement'])) {
     $announcement = $conn->real_escape_string($_POST['announcement']);
     $stmt = $conn->prepare("INSERT INTO announcements (message, date_posted) VALUES (?, NOW())");
@@ -52,6 +32,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['announcement'])) {
     exit();
 }
 
+// Edit announcement
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_id']) && isset($_POST['edit_message'])) {
+    $id = intval($_POST['edit_id']);
+    $msg = $conn->real_escape_string($_POST['edit_message']);
+    $conn->query("UPDATE announcements SET message='$msg' WHERE id=$id");
+    header("Location: admin.php");
+    exit();
+}
+
+// Delete announcement
+if (isset($_GET['delete'])) {
+    $id = intval($_GET['delete']);
+    $conn->query("DELETE FROM announcements WHERE id=$id");
+    header("Location: admin.php");
+    exit();
+}
+
+// Fetch announcements
+$ann_result = $conn->query("SELECT * FROM announcements ORDER BY date_posted DESC");
+$announcements = [];
+while ($row = $ann_result->fetch_assoc()) {
+    $announcements[] = $row;
+}
 $conn->close();
 ?>
 
@@ -59,29 +62,25 @@ $conn->close();
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CCS | Admin</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
+<body style="background-color: #f5f5f5;">
 
 <!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #0d47a1; padding: 10px;">
+<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #0d47a1;">
     <div class="container-fluid">
-        <a class="navbar-brand text-white"><strong>College of Computer Studies Admin</strong></a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        <a class="navbar-brand text-white fw-bold">College of Computer Studies Admin</a>
         <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item"><a class="nav-link text-white" href="admin.php">Home</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="#" data-bs-toggle="modal" data-bs-target="#searchModal">Search</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="#">Students</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="students.php">Students</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="sit_in.php">Sit-in</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="ViewRecords.php">View Sit-in Records</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="#">Sit-in Reports</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="#">Feedback Reports</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="report.php">Sit-in Reports</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="feedback_report.php">Feedback Reports</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="#">Reservation</a></li>
             </ul>
         </div>
@@ -89,13 +88,12 @@ $conn->close();
     </div>
 </nav>
 
-<!-- Main Container -->
 <div class="container mt-4">
     <div class="row">
-        <!-- Statistics Section -->
-        <div class="col-md-6">
-            <div class="card border-primary">
-                <div class="card-header bg-primary text-white">📊 Statistics</div>
+        <!-- Stats -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-primary text-white">📊 Sit-in Statistics</div>
                 <div class="card-body">
                     <p><strong>Students Registered:</strong> <?= $total_students ?></p>
                     <p><strong>Currently Sit-in:</strong> <?= $current_sit_in ?></p>
@@ -104,23 +102,28 @@ $conn->close();
                 </div>
             </div>
         </div>
-        <!-- Announcements Section -->
-        <div class="col-md-6">
-            <div class="card border-primary">
-                <div class="card-header bg-primary text-white">📢 Announcement</div>
+
+        <!-- Announcements -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-primary text-white">📢 Announcements</div>
                 <div class="card-body">
                     <form method="POST">
-                        <textarea class="form-control mb-2" name="announcement" placeholder="New Announcement"></textarea>
-                        <button type="submit" class="btn btn-success">Submit</button>
+                        <textarea class="form-control mb-2" name="announcement" rows="3" placeholder="New Announcement..." required></textarea>
+                        <button type="submit" class="btn btn-success w-100">Post</button>
                     </form>
-                    <h5 class="mt-3">📌 Posted Announcements</h5>
+                    <h6 class="mt-4">📌 Recent</h6>
                     <ul class="list-group">
-                        <?php foreach ($announcements as $ann) { ?>
+                        <?php foreach ($announcements as $ann): ?>
                             <li class="list-group-item">
-                                <strong>CCS Admin | <?= date("Y-M-d", strtotime($ann['date_posted'])) ?></strong><br>
+                                <strong>Admin | <?= date("Y-m-d", strtotime($ann['date_posted'])) ?></strong><br>
                                 <?= nl2br(htmlspecialchars($ann['message'])) ?>
+                                <div class="mt-2 d-flex justify-content-end">
+                                    <button class="btn btn-sm btn-warning me-2" onclick="editAnnouncement(<?= $ann['id'] ?>, `<?= htmlspecialchars($ann['message'], ENT_QUOTES) ?>`)">Edit</button>
+                                    <a href="?delete=<?= $ann['id'] ?>" onclick="return confirm('Delete this announcement?')" class="btn btn-sm btn-danger">Delete</a>
+                                </div>
                             </li>
-                        <?php } ?>
+                        <?php endforeach; ?>
                     </ul>
                 </div>
             </div>
@@ -128,13 +131,35 @@ $conn->close();
     </div>
 </div>
 
-<!-- Search Student Modal -->
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-primary">
+            <form method="POST">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Edit Announcement</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="edit_id" id="edit_id">
+                    <textarea class="form-control" name="edit_message" id="edit_message" rows="4" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Update</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Search Modal -->
 <div class="modal fade" id="searchModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content border-primary">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">Search Student</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="text" id="searchInput" class="form-control mb-2" placeholder="Enter ID or Name">
@@ -145,94 +170,116 @@ $conn->close();
     </div>
 </div>
 
-<!-- Sit-In Form Modal -->
+<!-- Sit In Form Modal -->
 <div class="modal fade" id="sitInModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Sit In Form</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form action="sit_in_submit.php" method="POST">
-                    <div class="mb-2">
-                        <label><strong>ID Number:</strong></label>
-                        <input type="text" class="form-control" name="student_id" id="sitInId" readonly>
-                    </div>
-                    <div class="mb-2">
-                        <label><strong>Student Name:</strong></label>
-                        <input type="text" class="form-control" name="name" id="sitInName" readonly>
-                    </div>
-                    <div class="mb-2">
-                        <label><strong>Purpose:</strong></label>
-                        <input type="text" class="form-control" name="purpose" id="sitInPurpose" required>
-                    </div>
-                    <div class="mb-2">
-                        <label><strong>Lab:</strong></label>
-                        <input type="text" class="form-control" name="lab" id="sitInLab" required>
-                    </div>
-                    <div class="mb-2">
-                        <label><strong>Remaining Sessions:</strong></label>
-                        <input type="number" class="form-control" name="sessions" id="sitInSessions" required>
-                    </div>
-                    <button type="submit" name="sitInSubmit" class="btn btn-primary w-100">Sit In</button>
-                </form>
-            </div>
+  <div class="modal-dialog">
+    <form action="sit_in_action.php" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Sit In Form</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">ID Number</label>
+          <input type="text" class="form-control" id="sit_student_id" name="student_id" readonly>
         </div>
-    </div>
+        <div class="mb-3">
+          <label class="form-label">Student Name</label>
+          <input type="text" class="form-control" id="sit_name" name="student_name" readonly>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Purpose</label>
+          <input type="text" class="form-control" id="sit_purpose" name="purpose" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Lab</label>
+          <input type="text" class="form-control" id="sit_lab" name="lab" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Remaining Sessions</label>
+          <input type="text" class="form-control" id="sit_remaining" name="remaining_sessions" readonly>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary">Sit In</button>
+      </div>
+    </form>
+  </div>
 </div>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Pie Chart (Unchanged)
-    let data = <?= json_encode($stats_data); ?>;
-    let labels = data.map(item => item.language);
-    let values = data.map(item => item.count);
 
+<!-- Scripts -->
+<script>
+function editAnnouncement(id, message) {
+    document.getElementById("edit_id").value = id;
+    document.getElementById("edit_message").value = message;
+    new bootstrap.Modal(document.getElementById("editModal")).show();
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const chartData = <?= json_encode($stats_data); ?>;
     new Chart(document.getElementById('statsChart').getContext('2d'), {
         type: 'pie',
         data: {
-            labels: labels,
-            datasets: [{ data: values, backgroundColor: ['#36A2EB', '#FF6384', '#FF9F40', '#FFCD56', '#4BC0C0'] }]
+            labels: chartData.map(d => d.language),
+            datasets: [{
+                data: chartData.map(d => d.count),
+                backgroundColor: ['#42a5f5', '#ef5350', '#ffb74d', '#66bb6a', '#ab47bc']
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } }
         }
     });
+    document.getElementById("searchButton").addEventListener("click", function () {
+    const query = document.getElementById("searchInput").value.trim();
+    const resultDiv = document.getElementById("searchResults");
 
-    // Search Functionality
-    document.getElementById("searchButton").addEventListener("click", function() {
-        let query = document.getElementById("searchInput").value.trim();
-        let searchResults = document.getElementById("searchResults");
+    if (!query) {
+        resultDiv.innerHTML = "<p class='text-danger'>Please enter a query.</p>";
+        return;
+    }
 
-        if (query === "") {
-            searchResults.innerHTML = "<p class='text-danger'>Please enter a Student ID or Name.</p>";
-            return;
-        }
+    fetch("search.php?q=" + encodeURIComponent(query))
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                resultDiv.innerHTML = `<p class="text-danger">${data.error}</p>`;
+            } else {
+                resultDiv.innerHTML = `
+    <div class="card border-success">
+        <div class="card-body">
+            <p><strong>ID:</strong> <span class="student-id">${data.student_id}</span></p>
+            <p><strong>Name:</strong> <span class="student-name">${data.name}</span></p>
+            <p><strong>Lab:</strong> <span class="student-lab">${data.lab}</span></p>
 
-        fetch("search.php?q=" + encodeURIComponent(query))
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    searchResults.innerHTML = `<p class="text-danger">${data.error}</p>`;
-                } else {
-                    // Fill Sit-In Form fields
-                    document.getElementById("sitInId").value = data.student_id;
-                    document.getElementById("sitInName").value = data.name;
-                    document.getElementById("sitInPurpose").value = data.language;
-                    document.getElementById("sitInLab").value = data.laboratory;
-                    document.getElementById("sitInSessions").value = data.remaining_sessions;
+            <p><strong>Remaining Sessions:</strong> <span class="student-remaining">${data.remaining_sessions}</span></p>
+            <button class="btn btn-success mt-2" id="openSitIn">✔ Create Sit-in Record</button>
+        </div>
+    </div>
+`;
 
-                    // Show Sit-In Modal
-                    let sitInModal = new bootstrap.Modal(document.getElementById("sitInModal"));
-                    sitInModal.show();
-                }
-            })
-            .catch(error => {
-                searchResults.innerHTML = "<p class='text-danger'>Failed to fetch data.</p>";
-            });
-    });
+document.getElementById("openSitIn").addEventListener("click", () => {
+    document.getElementById("sit_student_id").value = data.student_id;
+    document.getElementById("sit_name").value = data.name;
+    document.getElementById("sit_lab").value = data.lab;
+
+    document.getElementById("sit_remaining").value = data.remaining_sessions;
+    document.getElementById("sit_purpose").value = '';
+    new bootstrap.Modal(document.getElementById("sitInModal")).show();
 });
+
+            }
+        })
+        .catch(err => {
+            resultDiv.innerHTML = `<p class="text-danger">Error: ${err.message}</p>`;
+        });
+});
+});
+
+
 </script>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 </body>
 </html>

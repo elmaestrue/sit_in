@@ -1,5 +1,16 @@
 <?php
 session_start(); // Start the session at the beginning of the script
+// Check if username exists
+$stmt = $conn->prepare("SELECT * FROM studentinfo WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows > 0) {
+    echo "Username already taken.";
+} else {
+    // Proceed with insert
+}
 
 // Database connection details
 $servername = "localhost";  // XAMPP server

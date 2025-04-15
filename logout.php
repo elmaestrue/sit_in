@@ -1,29 +1,55 @@
 <?php
 session_start();
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "test";
+include("db.php");
 
-$conn = new mysqli($servername, $username, $password, $dbname);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if (!isset($_SESSION['username'])) {
+    header("Location: login.html");
+    exit();
 }
 
-if (isset($_GET['id'])) {
-    $student_id = $conn->real_escape_string($_GET['id']);
+$username = $_SESSION['username'];
 
-    // Update the log_out_time to the current timestamp
-    $sql = "UPDATE sit_in_records SET log_out_time = NOW() WHERE student_id = '$student_id' AND log_out_time IS NULL";
+// Get student_id from studentinfo using username
+$user_stmt = $conn->prepare("SELECT student_id FROM studentinfo WHERE username = ?");
+$user_stmt->bind_param("s", $username);
+$user_stmt->execute();
+$user_result = $user_stmt->get_result();
+$user = $user_result->fetch_assoc();
 
-    if ($conn->query($sql) === TRUE) {
-        $_SESSION['message'] = "Student successfully logged out.";
-    } else {
-        $_SESSION['message'] = "Error logging out: " . $conn->error;
-    }
+if (!$user) {
+    die("Error: Student not found.");
 }
 
-$conn->close();
-header("Location: admin.php"); // Redirect back to the main page
+$student_id = $user['student_id'];
+
+// Get remaining_sessions from students table
+$session_stmt = $conn->prepare("SELECT remaining_sessions FROM students WHERE student_id = ?");
+$session_stmt->bind_param("s", $student_id);
+$session_stmt->execute();
+$session_result = $session_stmt->get_result();
+$student = $session_result->fetch_assoc();
+
+if (!$student) {
+    die("Error: Student record not found.");
+}
+
+$remaining_sessions = $student['remaining_sessions'];
+
+if ($remaining_sessions <= 0) {
+    // Cannot logout, sessions exhausted
+    echo "<script>alert('Logout denied: No remaining sit-in sessions left. Please contact admin.'); window.location.href = 'index.php';</script>";
+    exit();
+} else {
+    // Deduct 1 session and update
+    $new_remaining = $remaining_sessions - 1;
+    $update_stmt = $conn->prepare("UPDATE students SET remaining_sessions = ? WHERE student_id = ?");
+    $update_stmt->bind_param("is", $new_remaining, $student_id);
+    $update_stmt->execute();
+}
+
+// Now destroy session
+session_unset();
+session_destroy();
+header("Location: login.html");
 exit();
 ?>

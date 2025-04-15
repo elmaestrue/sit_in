@@ -236,48 +236,59 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- Sidebar Overlay -->
     <div class="overlay"></div>
 
-    <!-- Sidebar Navigation -->
-    <div class="navcontainer">
-        <nav class="nav">
-            <div class="nav-upper-options">
-                <div class="nav-option">
-                    <a href="index.php" style="color: white; text-decoration: none;">
-                             <h3>Home</h3>
-                    </a>
-                </div>
-                <div class="nav-option">
-                    <a href="edit.php" style="color: white; text-decoration: none;">
-                           <h3>Profile</h3>
-                    </a>
-                </div>
-                <div class="nav-option">
-                    <a href="edit.php" style="color: white; text-decoration: none;">
-                            <h3>Edit</h3>
-                    </a>
-                </div>
-                <div class="nav-option">
+<!-- Sidebar Navigation -->
+<div class="navcontainer">
+    <nav class="nav">
+        <div class="nav-upper-options">
+            <div class="nav-option">
                 <a href="index.php" style="color: white; text-decoration: none;">
-                            <h3>View Announcement</h3></div>
-                    </a>
-                <div class="nav-option">
-                <a href="index.php" style="color: white; text-decoration: none;">
-                            <h3>Sit-in Rules</h3></div>
-                    </a>
-                <div class="nav-option">
-                    <a href="index.php" style="color: white; text-decoration: none;">
-                          <h3>Lab Rules & Regulations</h3></div>
-                    </a>
-                <div class="nav-option"><h3>Sit-in History</h3></div>
-                <div class="nav-option"><h3>Reservation</h3></div>
-                <div class="nav-option"><h3>View Remaining Session</h3></div>
-                <div class="nav-option">
-                    <a href="logout.php" style="color: white; text-decoration: none;">
-                        <h3>Log-Out</h3>
-                    </a>
-                </div>
+                    <h3 class="nav-text">Home</h3>
+                </a>
             </div>
-        </nav>
-    </div>
+            <div class="nav-option">
+                <a href="edit.php" style="color: white; text-decoration: none;">
+                    <h3 class="nav-text">Profile</h3>
+                </a>
+            </div>
+            <div class="nav-option">
+                <a href="edit.php" style="color: white; text-decoration: none;">
+                    <h3 class="nav-text">Edit</h3>
+                </a>
+            </div>
+            <div class="nav-option">
+                <a href="index.php" style="color: white; text-decoration: none;">
+                    <h3 class="nav-text">View Announcement</h3>
+                </a>
+            </div>
+            <div class="nav-option">
+                <a href="index.php" style="color: white; text-decoration: none;">
+                    <h3 class="nav-text">Sit-in Rules</h3>
+                </a>
+            </div>
+            <div class="nav-option">
+                <a href="index.php" style="color: white; text-decoration: none;">
+                    <h3 class="nav-text">Lab Rules & Regulations</h3>
+                </a>
+            </div>
+            <div class="nav-option"><h3 class="nav-text">Sit-in History</h3></div>
+            <div class="nav-option"><h3 class="nav-text">Reservation</h3></div>
+            <div class="nav-option"><h3 class="nav-text">View Remaining Session</h3></div>
+            <div class="nav-option">
+                <a href="logout.php" style="color: white; text-decoration: none;">
+                    <h3 class="nav-text">Log-Out</h3>
+                </a>
+            </div>
+        </div>
+    </nav>
+</div>
+
+<!-- CSS -->
+<style>
+    .nav-text {
+        font-size: 14px; /* Adjust the size as needed */
+    }
+</style>
+
 
     <!-- Profile Section -->
     <div class="container">
